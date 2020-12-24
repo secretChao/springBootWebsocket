@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>隔板突破器</title>
+    <link href="https://cdn.bootcss.com/twitter-bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+    .jumbotron {
+        width: 100%;
+    }
+ 
+    #text {
+        height: 3rem;
+        font-size: 1rem;
+        line-height: 3rem;
+        margin: 1rem;
+    }
+ 
+    .btn {
+        margin-right: 5px;
+    }
+ 
+    #connect {
+        margin-left: 1rem;
+    }
+ 
+    #log {
+        margin: 1rem 0 0 1rem;
+    }
+ 
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row">
+        <div class="jumbotron">
+            <div class="form-inline">
+	            <button type="button" class="btn btn-danger my-1 ml-3" id="disconnect" disabled="disabled">離線</button>
+	            <label class="my-1 ml-2 mr-1" for="room">Room:</label>
+	            <select id="room" class="custom-select my-1">
+	                <option value="001">001</option>
+	                <option value="002">002</option>
+	                <option value="003">003</option>
+	                <option value="004">004</option>
+	                <option value="005">005</option>
+	                <option value="006">006</option>
+	            </select>
+	            <label class="my-1 ml-2 mr-1" for="name">Name:</label>
+	            <input type="text" id="name" class="form-control">
+	            <button type="button" class="btn btn-info my-1" id="connect">連接</button>
+	            <button type="button" class="btn btn-outline-secondary my-1" id="clear">清除</button>
+            </div>
+            <div id="log" style="height:500px;overflow-y:auto;">
+                <p>對話紀錄:</p>
+            </div>
+            <input type="text" id="text" class="col-lg-10"/>
+            <input type="button" value="發送" class="btn btn-success" id="sent" disabled="disabled"/>
+        </div>
+    </div>
+</div>
+</body>
+<script src="https://cdn.bootcss.com/sockjs-client/0.3.4/sockjs.min.js"></script>
+<script type="text/javascript">
+
+	var ws;
+    var connect = function () {
+    	let roomNum = document.querySelector('#room').value;
+	    let name = document.querySelector('#name').value;
+	    if (!name) {
+	    	log('尚未輸入Name!', 'sys');
+	    	return;
+	    }
+	    
+	    //ws = new SockJS("/connect/" + roomNum );
+	    ws = new WebSocket('ws://10.2.60.47:8080/connect/' + roomNum + '?name='+name);
+	    ws.onopen = function () {
+	        setConnected(true);
+	        //setName();
+	        log('伺服器連接成功！', 'sys');
+	    };
+	    ws.onmessage = function (event) {
+	        log(event.data);
+	    };
+	    ws.onclose = function () {
+	        setConnected(false);
+	        log('伺服器連接中斷！', 'sys')
+	    }
+	}
+
+    let text = document.querySelector('#text');
+    let connectBtn = document.querySelector("#connect");
+    let sentBtn = document.querySelector("#sent");
+    let disconnectBtn = document.querySelector("#disconnect");
+    let clearBtn = document.querySelector("#clear");
+    let logDiv = document.querySelector("#log");
+    let roomSelect = document.querySelector("#room");
+    let nameInput = document.querySelector("#name");
+ 
+    var sent = function () {
+        if (ws != null) {
+            ws.send(text.value);
+        } else {
+            log('尚未連接！', 'sys')
+        }
+    }
+ 
+    var disconnect = function () {
+        if (ws != null) {
+            ws.close();
+            ws = null;
+        }
+        setConnected(false);
+    }
+ 
+    var log = function (value, type) {
+        let content = document.createElement('div');
+        content.style['word-break'] = 'break-word';
+        if (type) {
+        	content.style.color = 'red';
+        }
+        content.innerHTML = getTime() + ' ' + value;
+        logDiv.appendChild(content);
+        logDiv.scrollTop = logDiv.scrollHeight;
+        text.value = '';
+    	
+    }
+    
+    var getTime = function(){
+    	var now = new Date();
+    	return timeFormat(now.getHours()) + ':' + timeFormat(now.getMinutes()) + ':' + timeFormat(now.getSeconds());
+    }
+    
+    var timeFormat = function(timeData){
+        if (timeData / 10 < 1) {
+        	return "0" + timeData;
+        }
+        return timeData;
+    }
+ 
+    var setConnected = function (connected) {
+        connectBtn.disabled = connected;
+        disconnectBtn.disabled = !connected;
+        sentBtn.disabled = !connected;
+        roomSelect.disabled = connected;
+        nameInput.disabled = connected;
+    }
+    
+//     var setName = function() {
+//     	let name = document.querySelector('#name').value;
+    	
+//     	var request = new XMLHttpRequest();
+//     	request.open('POST', 'http://10.2.60.47:8080/setClient', true);
+
+//     	request.onload = function() {
+//     	  if (request.status >= 200 && request.status < 400) {
+
+//     	    console.log(request.responseText);
+//     	  }
+//     	};
+//     	var data = {
+//     		id: sessionId,
+//     	    name: name
+//     	}
+//     	request.send(encodeURI(data));
+//     }
+    
+    connectBtn.onclick = function(){
+    	connect();
+    };
+    
+    sentBtn.onclick = function(){
+    	sent();
+    };
+    
+    disconnectBtn.onclick = function(){
+    	disconnect();
+    };
+    
+    clearBtn.onclick = function(){
+    	logDiv.innerHTML = '';
+    };
+    
+    document.addEventListener('keyup', (e) => {
+        if ((e.key == 'Enter') && text.value != ''){
+        	sent();
+        }
+    });
+</script>
+</html>
