@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>隔板突破器</title>
-    <link href="https://cdn.bootcss.com/twitter-bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="bootstrap.min-4.5.3.css" rel="stylesheet">
     <style>
     .jumbotron {
         width: 100%;
@@ -34,7 +34,7 @@
 
 <div class="container">
     <div class="row">
-        <div class="jumbotron">
+        <div class="jumbotron col-lg-10">
             <div class="form-inline">
 	            <button type="button" class="btn btn-danger my-1 ml-3" id="disconnect" disabled="disabled">離線</button>
 	            <label class="my-1 ml-2 mr-1" for="room">Room:</label>
@@ -57,10 +57,19 @@
             <input type="text" id="text" class="col-lg-10"/>
             <input type="button" value="發送" class="btn btn-success" id="sent" disabled="disabled"/>
         </div>
+	    <div class="col-lg-2">
+	        <table class="table table-striped" id="onlineList">
+	            <thead class="thead-dark">
+	                <tr>
+	                    <th scope="col">在線清單</th>
+	                </tr>
+	            </thead>
+	        </table>
+	    </div>
     </div>
 </div>
 </body>
-<script src="https://cdn.bootcss.com/sockjs-client/0.3.4/sockjs.min.js"></script>
+<!--<script src="https://cdn.bootcss.com/sockjs-client/0.3.4/sockjs.min.js"></script>-->
 <script type="text/javascript">
 
 	var ws;
@@ -80,7 +89,7 @@
 	        log('伺服器連接成功！', 'sys');
 	    };
 	    ws.onmessage = function (event) {
-	        log(event.data);
+	        log(event.data, 'msg');
 	    };
 	    ws.onclose = function () {
 	        setConnected(false);
@@ -98,8 +107,13 @@
     let nameInput = document.querySelector("#name");
  
     var sent = function () {
-        if (ws != null) {
+        if (text.value == '') {
+        	return;
+        }
+    	
+    	if (ws != null) {
             ws.send(text.value);
+            text.value = '';
         } else {
             log('尚未連接！', 'sys')
         }
@@ -114,15 +128,45 @@
     }
  
     var log = function (value, type) {
+    	
+    	let sentMsg;
+    	let sentDate;
+    	let sentName;
+    	let sentType;
+    	
+    	if (type == 'msg') {
+    		let json = JSON.parse(value);
+    		sentMsg = json.sentMsg;
+    		sentDate = json.sentDate;
+    		sentName = json.sentName;
+    		sentType = json.sentType;
+    	} else {
+    		sentMsg = value;
+    		sentDate = getTime();
+    		sentType = 'SYS';
+    	}
+    	
+    	if (sentType == 'LIST') {
+    		updateOnlinelist(sentMsg);
+    		return;
+    	}
+    	
         let content = document.createElement('div');
         content.style['word-break'] = 'break-word';
-        if (type) {
+        if (sentType == 'SYS' ) {
         	content.style.color = 'red';
         }
-        content.innerHTML = getTime() + ' ' + value;
+        
+        let outputMsg;
+        outputMsg = sentDate + ' ';
+        if (sentName) {
+        	outputMsg = outputMsg + sentName + ': '; 
+        }
+        outputMsg = outputMsg + sentMsg;
+        
+        content.textContent = outputMsg;
         logDiv.appendChild(content);
         logDiv.scrollTop = logDiv.scrollHeight;
-        text.value = '';
     	
     }
     
@@ -146,24 +190,26 @@
         nameInput.disabled = connected;
     }
     
-//     var setName = function() {
-//     	let name = document.querySelector('#name').value;
+    var updateOnlinelist = function (value) {
+    	let onlineList = document.querySelector('#onlineList');
+    	let tbody = onlineList.querySelector('tbody');
+    	if(tbody){
+    		tbody.remove();
+    	}
+    	let newTbody = document.createElement('tbody');
     	
-//     	var request = new XMLHttpRequest();
-//     	request.open('POST', 'http://10.2.60.47:8080/setClient', true);
-
-//     	request.onload = function() {
-//     	  if (request.status >= 200 && request.status < 400) {
-
-//     	    console.log(request.responseText);
-//     	  }
-//     	};
-//     	var data = {
-//     		id: sessionId,
-//     	    name: name
-//     	}
-//     	request.send(encodeURI(data));
-//     }
+    	let clientList = Object.values(JSON.parse(value));
+    	clientList.forEach(client => {
+    		let tr = document.createElement('tr');
+    		let td = document.createElement('td');
+    		td.textContent = client;
+    		tr.appendChild(td);
+    		newTbody.appendChild(tr);
+    	});
+    	
+    	onlineList.appendChild(newTbody);
+    }
+    
     
     connectBtn.onclick = function(){
     	connect();
@@ -182,7 +228,7 @@
     };
     
     document.addEventListener('keyup', (e) => {
-        if ((e.key == 'Enter') && text.value != ''){
+        if ((e.key == 'Enter')){
         	sent();
         }
     });

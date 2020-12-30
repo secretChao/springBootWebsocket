@@ -33,7 +33,7 @@ public class WebsocketInterceptor implements HandshakeInterceptor {
 		// 获得请求参数
 		try {
 			String paramString = request.getURI().getQuery();
-			String clientIp = request.getLocalAddress().getAddress().getHostAddress();
+			String clientIp = request.getRemoteAddress().getAddress().getHostAddress();
 			String clientName = paramString.substring(5);
 //			ServletServerHttpRequest servletRequest = (ServletServerHttpRequest) request;
 //			HttpSession session = servletRequest.getServletRequest().getSession();
