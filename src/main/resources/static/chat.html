@@ -50,6 +50,10 @@
 	            <input type="text" id="name" class="form-control">
 	            <button type="button" class="btn btn-info my-1" id="connect">連接</button>
 	            <button type="button" class="btn btn-outline-secondary my-1" id="clear">清除</button>
+	            <div class="custom-control custom-switch ml-2">
+					<input type="checkbox" class="custom-control-input" id="pupSwitch" checked>
+					<label class="custom-control-label" for="pupSwitch">彈窗提醒</label>
+				</div>
             </div>
             <div id="log" style="height:500px;overflow-y:auto;">
                 <p>對話紀錄:</p>
@@ -58,7 +62,7 @@
             <input type="button" value="發送" class="btn btn-success" id="sent" disabled="disabled"/>
         </div>
 	    <div class="col-lg-2">
-	        <table class="table table-striped" id="onlineList">
+	        <table class="table table-striped" id="onlineList" aria-describedby="在線清單">
 	            <thead class="thead-dark">
 	                <tr>
 	                    <th scope="col">在線清單</th>
@@ -71,7 +75,6 @@
 </body>
 <!--<script src="https://cdn.bootcss.com/sockjs-client/0.3.4/sockjs.min.js"></script>-->
 <script type="text/javascript">
-
 	var ws;
     var connect = function () {
     	let roomNum = document.querySelector('#room').value;
@@ -96,6 +99,11 @@
 	        log('伺服器連接中斷！', 'sys')
 	    }
 	}
+    
+    let hiddenProperty = 'hidden' in document ? 'hidden' :    
+        'webkitHidden' in document ? 'webkitHidden' :    
+        'mozHidden' in document ? 'mozHidden' :    
+        null;
 
     let text = document.querySelector('#text');
     let connectBtn = document.querySelector("#connect");
@@ -105,6 +113,7 @@
     let logDiv = document.querySelector("#log");
     let roomSelect = document.querySelector("#room");
     let nameInput = document.querySelector("#name");
+    let pupSwitch = document.querySelector('#pupSwitch');
  
     var sent = function () {
         if (text.value == '') {
@@ -142,7 +151,6 @@
     		sentType = json.sentType;
     	} else {
     		sentMsg = value;
-    		sentDate = getTime();
     		sentType = 'SYS';
     	}
     	
@@ -157,23 +165,41 @@
         	content.style.color = 'red';
         }
         
-        let outputMsg;
-        outputMsg = sentDate + ' ';
+        let outputMsg = '';
+        if (sentDate) {
+	        outputMsg = sentDate + ' ';        	
+        }
         if (sentName) {
-        	outputMsg = outputMsg + sentName + ': '; 
+        	outputMsg = outputMsg + sentName + ': ';
         }
         outputMsg = outputMsg + sentMsg;
         
         content.textContent = outputMsg;
         logDiv.appendChild(content);
         logDiv.scrollTop = logDiv.scrollHeight;
-    	
+        
+        if (!document[hiddenProperty]) {
+        	message.clear();
+        } else {
+            message.show();
+            windowFlashing();
+        }
     }
     
-    var getTime = function(){
-    	var now = new Date();
-    	return timeFormat(now.getHours()) + ':' + timeFormat(now.getMinutes()) + ':' + timeFormat(now.getSeconds());
+    var windowFlashing = function () {
+    	if (!pupSwitch.checked) {
+    		return;
+    	}
+    	
+    	var newWindow = window.open('有新訊息!');
+    	newWindow.opener = null;
+    	newWindow.close();
     }
+    
+//     var getTime = function(){
+//     	var now = new Date();
+//     	return timeFormat(now.getHours()) + ':' + timeFormat(now.getMinutes()) + ':' + timeFormat(now.getSeconds());
+//     }
     
     var timeFormat = function(timeData){
         if (timeData / 10 < 1) {
@@ -232,5 +258,43 @@
         	sent();
         }
     });
+    
+    var visibilityChangeEvent = hiddenProperty.replace(/hidden/i, 'visibilitychange');
+	document.addEventListener(visibilityChangeEvent, function(){
+	    if (!document[hiddenProperty]) {
+		    message.clear();
+	    }
+// 	    if (document.visibilityState == 'visible') {
+// 	    	message.clear();
+// 	    }
+	});
+    
+    var message = { 
+        time: 0, 
+        title: document.title, 
+        timer: null, 
+        // 顯示新訊息提示 
+        show: function () { 
+            var title = message.title.replace("【新訊息】", ""); 
+            // 定時器,設定訊息切換頻率閃爍效果就此產生 
+            message.timer = setTimeout(function () { 
+                message.time++; 
+                message.show(); 
+                if (message.time % 2 == 0) { 
+                    document.title = "【新訊息】" + title;
+                } else {
+                	document.title = title;
+                }
+            }, 600); 
+            return [message.timer, message.title]; 
+        }, 
+        // 取消新訊息提示 
+        clear: function () { 
+            clearTimeout(message.timer); 
+            document.title = message.title; 
+        } 
+    }; 
+
+
 </script>
 </html>
